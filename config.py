@@ -13,8 +13,8 @@ cf.read('config.ini')
 
 # Local Database for backup
 DB_CONNECTION_STRING = cf.get('Database', 'ConnectionString')
-SCHEMA = cf.get(
-    'Database', 'Schema') if len(cf.get(
+SCHEMA = cf.get('Database', 'Schema') if len(
+    cf.get(
         'Database',
         'Schema').strip()) > 0 else None    # Assign to none if schema is blank
 STRING_LENGTH = int(cf.get('Database', 'StringLength'))
@@ -28,6 +28,7 @@ TICKETS_TABLE_NAME = cf.get('Tables', 'Tickets')
 TICKETS_CF_TABLE_NAME = cf.get('Tables', 'TicketsCustomFields')
 ROOMS_TABLE_NAME = cf.get('Tables', 'Rooms')
 TEAMS_TABLE_NAME = cf.get('Tables', 'Teams')
+CATEGORIES_TABLE_NAME = cf.get('Tables', 'Categories')
 # Incident IQ Credentials
 IIQ_INSTANCE = cf.get('IncidentIQ', 'Instance')
 IIQ_TOKEN = cf.get('IncidentIQ', 'Token')

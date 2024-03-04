@@ -8,15 +8,15 @@ IncidentIQ to insert into the specified database.
 """
 
 from requests.models import HTTPError
-from sqlalchemy import Column, String, Integer, Date, Boolean, DateTime, VARCHAR
+from sqlalchemy import Column, String, Boolean, DateTime, VARCHAR
 from sqlalchemy_utils.types.uuid import UUIDType as UNIQUEIDENTIFIER
 from sqlalchemy.orm import validates
 from base import Base, IIQ_Datatype as IIQ
 from custom_fields import TicketCustomFields
+from types import SimpleNamespace as Namespace
 import config
 import requests
 import uuid
-import json
 
 
 class Ticket(Base, IIQ):
@@ -37,7 +37,7 @@ class Ticket(Base, IIQ):
     custom_fields = TicketCustomFields.parse_fields(
         TicketCustomFields.get_fields_request(0))
 
-    TicketId = Column(UNIQUEIDENTIFIER(binary=False), primary_key=True)
+    TicketId = Column(UNIQUEIDENTIFIER(binary=False))
     SiteId = Column(UNIQUEIDENTIFIER(binary=False))
     IsDeleted = Column(Boolean)
     TicketNumber = Column(String(length=config.STRING_LENGTH))
@@ -67,6 +67,11 @@ class Ticket(Base, IIQ):
     Subject = Column(String(length=config.STRING_LENGTH))
     IssueDescription = Column(VARCHAR(None))
     Status = Column(String(length=config.STRING_LENGTH))    # Nested
+    IssueCategoryId = Column(UNIQUEIDENTIFIER(binary=False))    # Nested
+    IssueCategoryName = Column(String(length=config.STRING_LENGTH))    # Nested
+    IssueCategoryScope = Column(String(length=config.STRING_LENGTH))    # Nested
+    ModelName = Column(String(length=config.STRING_LENGTH))    # Nested
+    DB_ID = Column(UNIQUEIDENTIFIER(binary=False), primary_key=True)
 
     fields = [
         'TicketId', 'TicketNumber', 'CreatedDate', 'StartedDate', 'ClosedDate',
@@ -74,7 +79,8 @@ class Ticket(Base, IIQ):
         'IsDeleted', 'AssignedToUserId', 'IsClosed', 'WorkflowStepId',
         'LocationId', 'LocationName', 'ModifiedDate', 'SiteId', 'UserId',
         'Username', 'Priority', 'Subject', 'IssueDescription', 'Status',
-        'TeamId', 'TeamName'
+        'TeamId', 'TeamName', 'IssueCategoryId', 'IssueCategoryName',
+        'ModelName', 'IssueCategoryScope'
     ]
 
     # Validator ensures empty strings are entered as null
@@ -99,19 +105,36 @@ class Ticket(Base, IIQ):
         # often they are purposeful inclusions that aren't nescessary but useful to
         # end users. This is harmless even if they are optional fields in the API response,
         # since find_element will set them to None by default
+        self.DB_ID = uuid.uuid4()
         self.OwnerName = IIQ.find_element(data, 'Owner', 'Name')
         self.ForName = IIQ.find_element(data, 'For', 'Name')
         self.LocationName = IIQ.find_element(data, 'Location', 'Name')
         self.IssueName = IIQ.find_element(data, 'Issue', 'Name')
-        self.AssignedToUserName = IIQ.find_element(data, 'AssignedToUser', 'Name')
+        self.AssignedToUserName = IIQ.find_element(data, 'AssignedToUser',
+                                                   'Name')
         self.Status = IIQ.find_element(data, 'WorkflowStep', 'StepName')
         self.TeamId = IIQ.find_element(data, 'AssignedToTeam', 'TeamId')
         self.TeamName = IIQ.find_element(data, 'AssignedToTeam', 'TeamName')
+        self.IssueCategoryId = IIQ.find_element(data, 'Issue',
+                                                'IssueCategoryId')
+        self.IssueCategoryName = IIQ.find_element(data, 'Issue',
+                                                  'IssueCategoryName')
+        self.IssueCategoryScope = IIQ.find_element(data, 'Issue',
+                                                   'IssueCategoryScope')
+        assets = IIQ.find_element(data, 'Assets')
+        if assets:
+            for idx, el in enumerate(assets):
+                if idx == 0:
+                    self.ModelName = IIQ.find_element(el, 'ModelName')
+        else:
+            self.ModelName = ''
 
     @staticmethod
     def get_data_request(page):
-        url = "https://" + config.IIQ_INSTANCE + "/api/v1.0/tickets?$p=" + str(page) + "&$s=" + config.PAGE_SIZE + "&$d=Descending&$o=TicketCreatedDate"
-        payload = "{\n    \"OnlyShowDeleted\": false,\n    \"FilterByViewPermission\": true\n}"
+        url = "https://" + config.IIQ_INSTANCE + "/api/v1.0/tickets?$p=" + str(
+            page
+        ) + "&$s=" + config.PAGE_SIZE + "&$d=Descending&$o=TicketCreatedDate"
+        payload = "{\n    \"OnlyShowDeleted\": false,\n    \"FilterByViewPermission\": false\n}"
         files = {}
         headers = {
             'Client': 'WebBrowser',
